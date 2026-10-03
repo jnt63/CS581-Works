@@ -1,12 +1,32 @@
 import os
 import functions_framework
-from google.cloud import storage
+import logging
+import json
+from google.cloud import storage, pubsub_v1
+
+
+logging.basicConfig(level=logging.INFO)
 
 BUCKET_NAME = "jasont63-nta"
 #directory within bucket that holds the data set of html files
 DATA_DIR = "html-files-gcs/"
+
+TOPIC_ID= "GET_POST_SA"
+PROJECT_ID="firstproject-508221"
+
 #client connection to GCS
 client=storage.Client()
+
+publisher = pubsub_v1.PublisherClient()
+topic_path=publisher.topic_path(PROJECT_ID,TOPIC_ID)
+
+def log_struct_msg(severity, msg, payload):
+    struct_entry= {
+        "severtiy":severity,
+        "message":msg,
+        "event_details":payload,
+        }
+    print(json.dumps(struct_entry))
 
 @functions_framework.http
 def fetch_file(request):
@@ -22,7 +42,15 @@ def fetch_file(request):
         if req_json and "filename" in req_json:
             filename=req_json["filename"]
     else:
-        return ("Method Not Implemented", 501   )
+        payload={
+            "event":"Method Not Implemented",
+            "method": request.method,
+            "status_code":501
+        }
+        error_msg=f"Method Not Implemented: {request.method}"
+        log_struct_msg("ERROR", f"Not Implemented: {request.method}",payload)
+        print(f"[PRINT LOG] 501 ERROR: {error_msg}")
+        return("Method not Implemented", 501)   
    
     #check to make sure there exists a file name, if not, not sure what error to put, default to 404 error
     if not filename:
@@ -33,11 +61,27 @@ def fetch_file(request):
         blob = client.bucket(BUCKET_NAME).blob(DATA_DIR+filename)
         
         if not blob.exists():
-            return ("file, {filename}, not found",404)
+            error_msg=f"File {filename} not found in {BUCKET_NAME}"
+            print(f"[PRINT LOG] 404 ERROR: {error_msg}")
+            payload={
+                "event":"File Not Found",
+                "file":filename,
+                "status_code": 404,
+            }
+            log_struct_msg("ERROR",error_msg,payload)
+            return (error_msg,404)
          
         content=blob.download_as_bytes()
         #content type should be text/html
         content_type=blob.content_type
+        payload= {
+            "event":"Success",
+            "file":filename,
+            "status_code":200,
+        }
+        data_bytes = json.dumps(payload).encode("utf-8")
+        publisher.publish(topic_path,data_bytes)
+        print(f"[PRINT LOG] SUCCESS: Successfully served file '{filename}'.")
         
         return (content,200,{"Content-Type":content_type})
     #for debugging for bugs
