@@ -12,11 +12,13 @@ PROJECT_ID = "firstproject-508221"
 SUBSCRIPTION_ID = "forbidden-requests-sub" 
 
 token = os.environ.get("GOOGLE_OAUTH_ACCESS_TOKEN")
+#make sure we have created a token
 if not token:
     raise RuntimeError("\n[AUTH ERROR] GOOGLE_OAUTH_ACCESS_TOKEN environment variable is not set!\n")
 creds = credentials.Credentials(token)
 client = storage.Client(credentials=creds, project="firstproject-508221")
 subscriber = pubsub_v1.SubscriberClient(credentials=creds)
+
 @functions_framework.cloud_event
 def process_event(cloud_event):
     raw_data=cloud_event.data.decode("utf-8")
