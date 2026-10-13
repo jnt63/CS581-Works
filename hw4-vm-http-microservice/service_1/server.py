@@ -18,13 +18,11 @@ bucket=storage.Client().bucket(BUCKET_NAME)
 
 logger = cloud_logging.Client().logger("vm-http-microservice")
 
-class CustomHTTPServer(HTTPServer):
-    request_queue_size = 10
 
 class FileReqReply(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     #simply override basehttprequest handler stderr logging, prevent unneeded outputs
-    def log_msg(self, format,*args):
+    def log_message(self, format,*args):
         pass
         
     def check_forbidden_country(self)->bool:
@@ -42,11 +40,11 @@ class FileReqReply(BaseHTTPRequestHandler):
             return True
         return False
         
-    def send_reply(self, status, content, content_type="text/plain"):
+    def send_reply(self, status, content, content_type="text/html"):
         encoded_content = content.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", f"{content_type}; charset=utf-8")
-        self.send_header("Content-Lenth", str(len(encoded_content)))
+        self.send_header("Content-Length", str(len(encoded_content)))
         self.send_header("Connection","close")
         self.end_headers()
         self.wfile.write(encoded_content)
@@ -56,6 +54,12 @@ class FileReqReply(BaseHTTPRequestHandler):
         
         try:
             content=bucket.blob(BUCKET_DIR+filename).download_as_text()
+            payload={
+                "event":"OK",
+                "filename":filename,
+                 "client_ip":self.client_address[0],
+            }
+            logger.log_struct(payload,severity="DEFAULT")
             self.send_reply(200,content)
         except exceptions.NotFound:
             payload={
@@ -68,16 +72,21 @@ class FileReqReply(BaseHTTPRequestHandler):
             self.send_reply(404,f"File Not Found:{filename}")
     #GET method
     def do_GET(self):
+        #simple check to make sure server is up before making requests
+        if self.path == "/health":
+            self.send_reply(200, "OK")
+            return
         if self.check_forbidden_country():
             return
         parsed_url=urllib.parse.urlparse(self.path)
         filename=parsed_url.path.strip()
+        if not filename:
+            filename = "0.html"
         self.fetch_and_reply(filename)
     #Post method
     def do_POST(self):
         if self.check_forbidden_country():
             return
-            
         try:
             content_len=int(self.headers.get("Content-Length",0))
             post_data = self.rfile.read(content_len)
@@ -87,6 +96,7 @@ class FileReqReply(BaseHTTPRequestHandler):
             self.fetch_and_reply(filename)
         except Exception as e:
             self.send_reply(400, f"SOMETHING_HAPPENED: {str(e)}")
+            
     #override Python's fallback, taking direct control over constructing 
     #the custom response format generating Cloud Logging ERROR payload.
     def do_PUT(self): self.handle_unsupported()
@@ -96,9 +106,18 @@ class FileReqReply(BaseHTTPRequestHandler):
     def do_PATCH(self): self.handle_unsupported()
     
     def handle_unsupported(self):
+        #get file name, simply for logging and checking to specify logs for specific files
+        content_len=int(self.headers.get("Content-Length",0))
+        post_data = self.rfile.read(content_len)
+        
+        payload = json.loads(post_data.decode("utf-8"))
+        filename=payload.get("filename")
+        if not filename:
+            filename="nofile.html"
         payload={
             "event": "UNSUPPORTED_METHOD",
             "method": self.command,
+            "filename":filename,
             "path":self.path,
             "client_ip": self.client_address[0]
         }
