@@ -2,11 +2,13 @@ import json
 import os
 import urllib.parse
 from http.server import HTTPServer, BaseHTTPRequestHandler
-from google.cloud import storage, logging as cloud_logging
+from google.cloud import storage, pubsub_v1, logging as cloud_logging
 from google.api_core import exceptions
 
 BUCKET_NAME="jasont63-nta"
 BUCKET_DIR="html-files-gcs/"
+PROJECT_ID="firstproject-508221"
+TOPIC_NAME="hw4-audit-topic"
 PORT = 8080
 
 FORBIDDEN_COUNTRIES = {
@@ -15,9 +17,10 @@ FORBIDDEN_COUNTRIES = {
     }
 
 bucket=storage.Client().bucket(BUCKET_NAME)
-
 logger = cloud_logging.Client().logger("vm-http-microservice")
 
+publisher = pubsub_v1.PublisherClient()
+topic_path = publisher.topic_path(PROJECT_ID, TOPIC_NAME)
 
 class FileReqReply(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
@@ -28,26 +31,37 @@ class FileReqReply(BaseHTTPRequestHandler):
     def check_forbidden_country(self)->bool:
         country = self.headers.get("X-country")
         if country and country.strip() in FORBIDDEN_COUNTRIES:
+            parsed_url = urllib.parse.urlparse(self.path)
+            filename = parsed_url.path.strip("/") or "unknown"
             payload={
                 "event":"FORBIDDEN_COUNTRY_ACCESS",
                 "client_ip":self.client_address[0],
                 "country":country,
                 "path":self.path,
                 "method":self.command,
+                "status":400,
             }
             logger.log_struct(payload,severity="CRITICAL")
+            try:
+                message_bytes = json.dumps(payload).encode("utf-8")
+                publisher.publish(topic_path, data=message_bytes)
+            except Exception as e:
+                print(f"Failed to publish to Pub/Sub: {e}")
             self.send_reply(400,"Permission Denied:Forbidden Country Header")
             return True
         return False
         
     def send_reply(self, status, content, content_type="text/html"):
-        encoded_content = content.encode("utf-8")
-        self.send_response(status)
-        self.send_header("Content-Type", f"{content_type}; charset=utf-8")
-        self.send_header("Content-Length", str(len(encoded_content)))
-        self.send_header("Connection","close")
-        self.end_headers()
-        self.wfile.write(encoded_content)
+        try:
+            encoded_content = content.encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", f"{content_type}; charset=utf-8")
+            self.send_header("Content-Length", str(len(encoded_content)))
+            self.send_header("Connection","close")
+            self.end_headers()
+            self.wfile.write(encoded_content)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
         
     def fetch_and_reply(self, filename):
         filename=filename.lstrip("/")
@@ -109,11 +123,20 @@ class FileReqReply(BaseHTTPRequestHandler):
         #get file name, simply for logging and checking to specify logs for specific files
         content_len=int(self.headers.get("Content-Length",0))
         post_data = self.rfile.read(content_len)
-        
-        payload = json.loads(post_data.decode("utf-8"))
-        filename=payload.get("filename")
-        if not filename:
-            filename="nofile.html"
+        if content_len >0:
+            try:
+                payload = json.loads(post_data.decode("utf-8"))
+                filename=payload.get("filename")
+                if not filename:
+                    filename="nofile.html"
+            except Exception:
+                pass
+                
+        else:
+            parsed_url = urllib.parse.urlparse(self.path)
+            extracted = parsed_url.path.strip("/")
+            if extracted:
+                filename = extracted
         payload={
             "event": "UNSUPPORTED_METHOD",
             "method": self.command,
