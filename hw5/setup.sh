@@ -20,7 +20,9 @@ export STATIC_IP_NAME="web-static-ip"
 export VM_WEB_NAME="web-server"
 export VM_SUB_NAME="sub-microservice"
 
+export INSTANCE_NAME="mysql-metadata-instance"
 export DB_NAME="web-metadata-db"
+export DB_USER="root"
 
 read -s -p "Enter password: " PASSWORD
 
@@ -37,30 +39,30 @@ fi
 STATIC_IP=$(gcloud compute addresses describe "$STATIC_IP_NAME" --region="$REGION" --format="value(address)")
 echo "ok2"
 
-if gcloud sql instances describe $DB_NAME --project=$PROJECT_ID >/dev/null 2>&1; then
+if gcloud sql instances describe $INSTANCE_NAME --project=$PROJECT_ID >/dev/null 2>&1; then
 	echo "Cloud SQL instance exists. Starting instance..."
-    gcloud sql instances patch $DB_NAME --activation-policy=ALWAYS --project=$PROJECT_ID
+    gcloud sql instances patch $INSTANCE_NAME --activation-policy=ALWAYS --project=$PROJECT_ID
 else
     echo "Creating new Cloud SQL instance..."
-    gcloud sql instances create $DB_NAME \
+    gcloud sql instances create $INSTANCE_NAME \
 		--region=$REGION \
         --database-version=MYSQL_8_4 \
 		--edition=ENTERPRISE \
 		--tier=db-custom-2-8192 \
-		--disk-size=100 \
-		--disk-type=SSD \
+		--storage-size=100 \
+		--storage-type=SSD \
 		--authorized-networks="0.0.0.0/0"\
 		--availability-type=ZONAL \
 		--no-backup \
         --root-password=$PASSWORD\
 
-    gcloud sql databases create app_db --instance=$DB_NAME--project=$PROJECT_ID
-    gcloud sql users create appuser --instance=$DB_NAME --password=$PASSWORD --project=$PROJECT_ID
+    gcloud sql databases create $DB_NAME --instance=$INSTANCE_NAME --project=$PROJECT_ID
+    gcloud sql users create $DB_USER --instance=$INSTANCE_NAME --password=$PASSWORD --project=$PROJECT_ID
 	
-	DB_IP=$(gcloud sql instances describe $DB_NAME --format='value(ipAddresses[0].ipAddress)' --project=$PROJECT_ID)
+	DB_IP=$(gcloud sql instances describe $INSTANCE_NAME --format='value(ipAddresses[0].ipAddress)' --project=$PROJECT_ID)
 	
 	echo "Initializing database schema via setup_schema.py..."
-    DB_HOST=$DB_IP DB_USER=DB_USER DB_PASSWORD=$PASSWORD python3 setup_schema.py
+    DB_HOST=$DB_IP DB_USER=$DB_USER DB_PASSWORD=$PASSWORD python3 setup_schema.py
 fi
 
 # Create Pub/Sub Topic and Subscription
