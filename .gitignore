@@ -1,0 +1,6 @@
+hw3-storage-reader-microservice/
+hw4-vm-http-microservice/ 
+__pycache__/  
+*.exe
+http-client
+startup_*.sh
