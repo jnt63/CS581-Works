@@ -20,11 +20,11 @@ export STATIC_IP_NAME="web-static-ip"
 export VM_WEB_NAME="web-server"
 export VM_SUB_NAME="sub-microservice"
 
-export DB_NAME="db-instance"
+export DB_INSTANCE="db-instance"
 
 echo "=== Step 1: Stopping Cloud SQL ==="
-if gcloud sql instances describe DBNAME--project=PROJECT_ID >/dev/null 2>&1; then
-    gcloud sql instances patch DBNAME--activation-policy=NEVER--quiet--project=PROJECT_ID
+if gcloud sql instances describe DB_INSTANCE --project=PROJECT_ID >/dev/null 2>&1; then
+    gcloud sql instances patch DB_INSTANCE --activation-policy=NEVER--quiet--project=PROJECT_ID
 fi
 
 echo "=== Step 2: Deleting VM Instance ==="

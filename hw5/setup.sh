@@ -51,7 +51,7 @@ else
 		--tier=db-custom-2-8192 \
 		--storage-size=100 \
 		--storage-type=SSD \
-		--authorized-networks="0.0.0.0/0"\
+		--authorized-networks="0.0.0.0/0" \
 		--availability-type=ZONAL \
 		--no-backup \
         --root-password=$PASSWORD\
@@ -141,6 +141,11 @@ python3 -m venv venv
 export PROJECT_ID="firstproject-508221"
 export BUCKET_NAME=BUCKET_NAME_HOLDER
 export TOPIC_NAME=TOPIC_NAME_HOLDER
+export DB_HOST = DB_HOST_HOLDER
+export DB_USER = DB_USER_HOLDER
+export DB_PASSWORD = DB_PASSWORD_HOLDER
+export DB_INSTANCE = DB_INSTANCE_HOLDER
+
 nohup ./venv/bin/python server.py > /var/log/web_server.log 2>&1 &
 touch /var/log/startup_already_done
 EOF
@@ -174,6 +179,10 @@ touch /var/log/startup_already_done
 EOF
 sed -i "s/BUCKET_NAME_HOLDER/${BUCKET_NAME}/g" service-1/startup_server.sh
 sed -i "s/TOPIC_NAME_HOLDER/${TOPIC_NAME}/g" service-1/startup_server.sh
+sed -i "s/DB_HOST_HOLDER/${DB_HOST}/g" service-1/startup_server.sh
+sed -i "s/DB_USER_HOLDER/${DB_USER}/g" service-1/startup_server.sh
+sed -i "s/DB_PASSWORD_HOLDER/${PASSWORD}/g" service-1/startup_server.sh
+sed -i "s/DB_INSTANCE_HOLDER/${INSTANCE_NAME}/g" service-1/startup_server.sh
 
 sed -i "s/SUB_NAME_HOLDER/${SUB_NAME}/g" service-2/startup_subscriber.sh
 

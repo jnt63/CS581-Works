@@ -22,14 +22,14 @@ DIR="html-files-gcs/"
 DB_HOST = os.environ.get('DB_HOST', '')
 DB_USER = os.environ.get('DB_USER', '')
 DB_PASSWORD = os.environ.get('DB_PASSWORD', '')
-DB_NAME = os.environ.get('DB_NAME', '')
+DB_INSTANCE = os.environ.get('DB_INSTANCE', '')
 
 def get_db_connection():
     return pymysql.connect(
         host=DB_HOST,
         user=DB_USER,
         password=DB_PASSWORD,
-        database=DB_NAME,
+        database=DB_INSTANCE,
         autocommit=True,
         cursorclass=pymysql.cursors.DictCursor
     )
