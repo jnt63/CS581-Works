@@ -120,76 +120,6 @@ if ! gcloud compute firewall-rules describe allow-http-8080 >/dev/null 2>&1; the
         --target-tags="web-server"
 fi
 
-cat << 'EOF' > service-1/startup_server.sh
-#!/usr/bin/env bash
-set -euo pipefail
-set -x
-if [ -f /var/log/startup_already_done ]; then
-    echo "Startup script already ran once. Skipping."
-    exit 0
-fi
-
-mkdir -p /opt/web_server
-cd /opt/web_server
-curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/app_code" > server.py
-curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/app_reqs" > requirements.txt
-
-
-
-apt-get update && apt-get install -y python3-pip python3-venv
-python3 -m venv venv
-./venv/bin/pip install --upgrade pip
-./venv/bin/pip install -r requirements.txt
-
-META_URL="http://metadata.google.internal/computeMetadata/v1/instance/attributes"
-
-export PROJECT_ID="firstproject-508221"
-export BUCKET_NAME="BUCKET_NAME_HOLDER"
-export TOPIC_NAME="TOPIC_NAME_HOLDER"
-export DB_HOST=DB_HOST_HOLDER
-export DB_USER=DB_USER_HOLDER
-export DB_PASSWORD=$(curl -s -H "Metadata-Flavor: Google" "${META_URL}/db_password_b64" | base64 -d)
-export DB_NAME=DB_NAME_HOLDER
-
-nohup ./venv/bin/python server.py > /var/log/web_server.log 2>&1 &
-touch /var/log/startup_already_done
-EOF
-
-cat << 'EOF' > service-2/startup_subscriber.sh
-#!/usr/bin/env bash
-set -euo pipefail
-if [ -f /var/log/startup_already_done ]; then
-    echo "Startup script already ran once. Skipping."
-    exit 0
-fi
-
-mkdir -p /opt/subscriber
-cd /opt/subscriber
-
-# Fetch Python script & requirements from metadata
-curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/app_code" > subscriber.py
-curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/attributes/app_reqs" > requirements.txt
-
-apt-get update && apt-get install -y python3-pip python3-venv
-python3 -m venv venv
-./venv/bin/pip install --upgrade pip
-./venv/bin/pip install -r requirements.txt
-
-# Pass env vars to Python
-export PROJECT_ID="firstproject-508221"
-export SUB_NAME="SUB_NAME_HOLDER"
-
-nohup ./venv/bin/python subscriber.py > /var/log/subscriber.log 2>&1 &
-touch /var/log/startup_already_done
-EOF
-sed -i "s/BUCKET_NAME_HOLDER/${BUCKET_NAME}/g" service-1/startup_server.sh
-sed -i "s/TOPIC_NAME_HOLDER/${TOPIC_NAME}/g" service-1/startup_server.sh
-sed -i "s/DB_HOST_HOLDER/${DB_IP}/g" service-1/startup_server.sh
-sed -i "s/DB_USER_HOLDER/${DB_USER}/g" service-1/startup_server.sh
-sed -i "s/DB_NAME_HOLDER/${DB_NAME}/g" service-1/startup_server.sh
-
-sed -i "s/SUB_NAME_HOLDER/${SUB_NAME}/g" service-2/startup_subscriber.sh
-
 DB_PASSWORD_B64=$(printf '%s' "$PASSWORD" | base64 | tr -d '\r\n')
 
 #CREATING WEB SERVER
@@ -200,7 +130,7 @@ gcloud compute instances create $VM_WEB_NAME \
     --service-account="$SA_WEB_EMAIL" \
     --scopes="cloud-platform" \
     --tags="web-server" \
-	--metadata="db_password_b64=${DB_PASSWORD_B64}" \
+	--metadata="db_password_b64=${DB_PASSWORD_B64},db_ip=${DB_IP}" \
     --metadata-from-file=\
 startup-script=service-1/startup_server.sh,\
 app_code=service-1/server.py,\
