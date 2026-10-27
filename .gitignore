@@ -3,4 +3,3 @@ hw4-vm-http-microservice/
 __pycache__/  
 *.exe
 http-client
-startup_*.sh

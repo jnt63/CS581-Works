@@ -230,13 +230,13 @@ class RequestHandler(BaseHTTPRequestHandler):
         
     
     def _report_timings(self, status, t_headers, t_gcs, t_send, t_db):
-        return 
-        """print(f"[TIMING] Status: {status} | "
+        print(f"[TIMING] Status: {status} | "
               f"Header Extract: {t_headers * 1000:.3f}ms | "
               f"GCS Read: {t_gcs * 1000:.3f}ms | "
               f"Send Response: {t_send * 1000:.3f}ms | "
               f"Database Entry: {t_db * 1000:.3f}ms", flush=True)
-        """
+        return
+        
     def __getattr__(self, name):
         if name.startswith('do_'):
             return self._method_not_implemented

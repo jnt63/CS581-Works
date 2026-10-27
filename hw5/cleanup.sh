@@ -24,7 +24,7 @@ export DB_INSTANCE="db-instance"
 
 echo "=== Step 1: Stopping Cloud SQL ==="
 if gcloud sql instances describe DB_INSTANCE --project=PROJECT_ID >/dev/null 2>&1; then
-    gcloud sql instances patch DB_INSTANCE --activation-policy=NEVER--quiet--project=PROJECT_ID
+    gcloud sql instances patch DB_INSTANCE --activation-policy=NEVER --quiet --project=PROJECT_ID
 fi
 
 echo "=== Step 2: Deleting VM Instance ==="
