@@ -9,16 +9,15 @@ DB_PASSWORD = os.environ.get('DB_PASSWORD', '')
 SQL_FILE_PATH = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
 def create_schema():
-    print(DB_HOST,DB_PASSWORD,DB_USER,SQL_FILE_PATH)
     #check for file
     if not os.path.exists(SQL_FILE_PATH):
         raise FileNotFoundError(f"cant find SQL schema file at {SQL_FILE_PATH}")
 
-    # read from schema.sql
+    #read from schema.sql
     with open(SQL_FILE_PATH, 'r') as f:
         sql_commands = f.read().split(';')
 
-    # Connect to MySQL
+    #connect to mysql
     conn = pymysql.connect(
         host=DB_HOST,
         user=DB_USER,
@@ -29,12 +28,12 @@ def create_schema():
     with conn.cursor() as cursor:
         print(f"Executing schema definitions from {SQL_FILE_PATH}...")
         for command in sql_commands:
-            stmt = command.strip()
-            if stmt:  # Ignore empty lines/trailing semicolons
+            stmt = command.strip() 
+            if stmt:  
                 cursor.execute(stmt)
 
     conn.close()
-    print("Database schema successfully configured!")
+    print("Database schema configured")
 
 
 if __name__ == '__main__':
