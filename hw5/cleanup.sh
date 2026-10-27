@@ -35,6 +35,9 @@ fi
 if gcloud compute instances describe $VM_SUB_NAME --zone=$ZONE --project=$PROJECT_ID >/dev/null 2>&1; then
     gcloud compute instances delete $VM_SUB_NAME --zone=$ZONE --quiet --project=$PROJECT_ID
 fi
+if gcloud compute firewall-rules describe allow-http-8080 >/dev/null 2>&1; then
+	gcloud compute firewall-rules delete allow-http-8080 --quiet
+fi
 
 #echo "=== Step 3: Releasing Static IP ==="
 #if gcloud compute addresses describe $STATIC_IP_NAME --region=$REGION --project=$PROJECT_ID >/dev/null 2>&1; then

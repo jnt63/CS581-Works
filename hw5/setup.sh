@@ -21,10 +21,10 @@ export VM_WEB_NAME="web-server"
 export VM_SUB_NAME="sub-microservice"
 
 export INSTANCE_NAME="mysql-metadata-instance"
-export DB_NAME="web-metadata-db"
+export DB_NAME="web_metadata_db"
 export DB_USER="root"
 
-read -s -p "Enter password: " PASSWORD
+read -p "Enter password: " PASSWORD
 
 echo "Setting active GCP Project to $PROJECT_ID"
 gcloud config set project $PROJECT_ID
@@ -58,12 +58,11 @@ else
 
     gcloud sql databases create $DB_NAME --instance=$INSTANCE_NAME --project=$PROJECT_ID
     gcloud sql users create $DB_USER --instance=$INSTANCE_NAME --password=$PASSWORD --project=$PROJECT_ID
-	
-	DB_IP=$(gcloud sql instances describe $INSTANCE_NAME --format='value(ipAddresses[0].ipAddress)' --project=$PROJECT_ID)
-	
 	echo "Initializing database schema via setup_schema.py..."
-    DB_HOST=$DB_IP DB_USER=$DB_USER DB_PASSWORD=$PASSWORD python3 setup_schema.py
+	DB_IP=$(gcloud sql instances describe $INSTANCE_NAME --format='value(ipAddresses[0].ipAddress)' --project=$PROJECT_ID)
+    DB_HOST=$DB_IP DB_USER=$DB_USER DB_PASSWORD=$PASSWORD DB_NAME=$DB_NAME python setup_schema.py
 fi
+DB_IP=$(gcloud sql instances describe $INSTANCE_NAME --format='value(ipAddresses[0].ipAddress)' --project=$PROJECT_ID)
 
 # Create Pub/Sub Topic and Subscription
 if ! gcloud pubsub topics describe "$TOPIC_NAME" >/dev/null 2>&1; then
@@ -97,10 +96,13 @@ gcloud storage buckets add-iam-policy-binding "gs://${BUCKET_NAME}" \
 	--member="serviceAccount:${SA_WEB_EMAIL}" \
     --role="roles/storage.objectViewer"
   
-#SA PUB/SUB ROLES
+#SA METRIC TRACKING ROLES and publisher roles
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
     --member="serviceAccount:${SA_WEB_EMAIL}" \
     --role="roles/pubsub.publisher"
+gcloud projects add-iam-policy-binding "$PROJECT_ID" \
+    --member="serviceAccount:${SA_WEB_EMAIL}" \
+    --role="roles/monitoring.metricWriter"
 echo "ok4"
 #ADD LOGGING PERMISSION FOR WEB_SA
 gcloud projects add-iam-policy-binding "$PROJECT_ID" \
@@ -121,6 +123,7 @@ fi
 cat << 'EOF' > service-1/startup_server.sh
 #!/usr/bin/env bash
 set -euo pipefail
+set -x
 if [ -f /var/log/startup_already_done ]; then
     echo "Startup script already ran once. Skipping."
     exit 0
@@ -138,13 +141,15 @@ python3 -m venv venv
 ./venv/bin/pip install --upgrade pip
 ./venv/bin/pip install -r requirements.txt
 
+META_URL="http://metadata.google.internal/computeMetadata/v1/instance/attributes"
+
 export PROJECT_ID="firstproject-508221"
-export BUCKET_NAME=BUCKET_NAME_HOLDER
-export TOPIC_NAME=TOPIC_NAME_HOLDER
-export DB_HOST = DB_HOST_HOLDER
-export DB_USER = DB_USER_HOLDER
-export DB_PASSWORD = DB_PASSWORD_HOLDER
-export DB_INSTANCE = DB_INSTANCE_HOLDER
+export BUCKET_NAME="BUCKET_NAME_HOLDER"
+export TOPIC_NAME="TOPIC_NAME_HOLDER"
+export DB_HOST=DB_HOST_HOLDER
+export DB_USER=DB_USER_HOLDER
+export DB_PASSWORD=$(curl -s -H "Metadata-Flavor: Google" "${META_URL}/db_password_b64" | base64 -d)
+export DB_NAME=DB_NAME_HOLDER
 
 nohup ./venv/bin/python server.py > /var/log/web_server.log 2>&1 &
 touch /var/log/startup_already_done
@@ -179,12 +184,13 @@ touch /var/log/startup_already_done
 EOF
 sed -i "s/BUCKET_NAME_HOLDER/${BUCKET_NAME}/g" service-1/startup_server.sh
 sed -i "s/TOPIC_NAME_HOLDER/${TOPIC_NAME}/g" service-1/startup_server.sh
-sed -i "s/DB_HOST_HOLDER/${DB_HOST}/g" service-1/startup_server.sh
+sed -i "s/DB_HOST_HOLDER/${DB_IP}/g" service-1/startup_server.sh
 sed -i "s/DB_USER_HOLDER/${DB_USER}/g" service-1/startup_server.sh
-sed -i "s/DB_PASSWORD_HOLDER/${PASSWORD}/g" service-1/startup_server.sh
-sed -i "s/DB_INSTANCE_HOLDER/${INSTANCE_NAME}/g" service-1/startup_server.sh
+sed -i "s/DB_NAME_HOLDER/${DB_NAME}/g" service-1/startup_server.sh
 
 sed -i "s/SUB_NAME_HOLDER/${SUB_NAME}/g" service-2/startup_subscriber.sh
+
+DB_PASSWORD_B64=$(printf '%s' "$PASSWORD" | base64 | tr -d '\r\n')
 
 #CREATING WEB SERVER
 gcloud compute instances create $VM_WEB_NAME \
@@ -194,6 +200,7 @@ gcloud compute instances create $VM_WEB_NAME \
     --service-account="$SA_WEB_EMAIL" \
     --scopes="cloud-platform" \
     --tags="web-server" \
+	--metadata="db_password_b64=${DB_PASSWORD_B64}" \
     --metadata-from-file=\
 startup-script=service-1/startup_server.sh,\
 app_code=service-1/server.py,\

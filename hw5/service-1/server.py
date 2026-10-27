@@ -6,11 +6,15 @@ import os
 import datetime
 import mimetypes
 import time
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
 
 import pymysql
 from google.api_core.exceptions import NotFound
+
+
+_thread_locals = threading.local()
 
 FORBIDDEN_COUNTRIES = {
     'north korea', 'iran', 'cuba', 'myanmar', 'iraq',
@@ -22,17 +26,33 @@ DIR="html-files-gcs/"
 DB_HOST = os.environ.get('DB_HOST', '')
 DB_USER = os.environ.get('DB_USER', '')
 DB_PASSWORD = os.environ.get('DB_PASSWORD', '')
-DB_INSTANCE = os.environ.get('DB_INSTANCE', '')
+DB_NAME = os.environ.get('DB_NAME', '')
+DB_TIMEOUT = 30
 
 def get_db_connection():
-    return pymysql.connect(
-        host=DB_HOST,
-        user=DB_USER,
-        password=DB_PASSWORD,
-        database=DB_INSTANCE,
-        autocommit=True,
-        cursorclass=pymysql.cursors.DictCursor
-    )
+    #we will reuse the db connection to stop openning and closing with each call
+    #only will do it if we have many calls and requests, 30 seconds apart
+    now = time.time()
+    conn = getattr(_thread_locals, 'db_conn', None)
+    last_used = getattr(_thread_locals, 'last_used', 0)
+    if conn is not None and (now - last_used > DB_TIMEOUT):
+        try:
+            conn.close()
+        except Exception:
+            pass
+        conn = None
+        _thread_locals.db_conn = None
+    if conn is None or not conn.open:
+        _thread_locals.db_conn = pymysql.connect(
+            host=DB_HOST,
+            user=DB_USER,
+            password=DB_PASSWORD,
+            database=DB_NAME,
+            autocommit=True,
+            cursorclass=pymysql.cursors.DictCursor
+        )
+    _thread_locals.last_used = now
+    return _thread_locals.db_conn
     
 class FileServer(ThreadingHTTPServer):
     """Cloud clients are explicit so the HTTP app can also be tested offline."""
@@ -108,7 +128,7 @@ def enter_into_db(metadata, filename, status_code):
                     VALUES (%s, %s, %s)
                 """
                 cursor.execute(sql, (metadata['time_of_day'], filename, status_code))
-        conn.close()
+        #conn.close()
     except Exception as e:
         print(f"[DB ERROR] Insertion failed: {e}; file attempted was: {filename}", flush=True)
     t1 = time.perf_counter()
@@ -223,8 +243,11 @@ class RequestHandler(BaseHTTPRequestHandler):
         raise AttributeError(name)
 
     def _method_not_implemented(self):
+        metadata, t_extract = extract_request_headers(self)
         self._log('ERROR', self._event(501, self.path), 'Unsupported HTTP method')
-        self._send(501, 'Method not implemented\n')
+        t_send = send_reply(self, 501, 'Method not implemented\n')
+        t_db = enter_into_db(metadata, self.path, 501)
+        self._report_timings(501, t_extract, 0.0, t_send, t_db)
 
     def log_message(self, format, *args):
         # Required structured error records go directly to Cloud Logging above.

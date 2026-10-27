@@ -5,10 +5,11 @@ import pymysql
 DB_HOST = os.environ.get('DB_HOST', '')
 DB_USER = os.environ.get('DB_USER', '')
 DB_PASSWORD = os.environ.get('DB_PASSWORD', '')
-DB_NAME = os.environ.get('DB_NAME', '')
+
 SQL_FILE_PATH = os.path.join(os.path.dirname(__file__), 'schema.sql')
 
 def create_schema():
+    print(DB_HOST,DB_PASSWORD,DB_USER,SQL_FILE_PATH)
     #check for file
     if not os.path.exists(SQL_FILE_PATH):
         raise FileNotFoundError(f"cant find SQL schema file at {SQL_FILE_PATH}")
