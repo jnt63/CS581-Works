@@ -12,7 +12,12 @@ fi
 gcloud projects add-iam-policy-binding firstproject-508221 \
 	--member="serviceAccount:${SA_EMAIL}" \
 	--role="roles/cloudsql.editor"
-
+	
+gcloud functions add-iam-policy-binding db-check \
+    --region=us-central1 \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/cloudfunctions.invoker"
+	
 gcloud functions deploy db-check \
     --gen2 \
     --runtime=python311 \

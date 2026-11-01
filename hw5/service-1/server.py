@@ -112,7 +112,7 @@ def enter_into_db(metadata, filename, status_code):
         with conn.cursor() as cursor:
             if status_code == 200:
                 sql = """
-                    INSERT INTO requests 
+                    INSERT INTO old_requests 
                     (country, client_ip, gender, age_range, income, is_banned, time_of_day, requested_file)
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                 """
