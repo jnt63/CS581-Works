@@ -88,5 +88,5 @@ echo -e "\nCleaning up vm, resuming job, and stopping database"
 gcloud compute instances delete $VM_NAME --zone=$ZONE --quiet
 gcloud scheduler jobs resume hourly-db-check --location=us-central1
 gcloud sql instances patch $INSTANCE_NAME --activation-policy=NEVER --project=$PROJECT_ID
-#gcloud storage rm -r gs://jasont63-nta/outputs/model1_report.txt
-#gcloud storage rm -r gs://jasont63-nta/outputs/model2_report.txt
+gcloud storage rm -r gs://jasont63-nta/outputs/model1_report.txt
+gcloud storage rm -r gs://jasont63-nta/outputs/model2_report.txt
