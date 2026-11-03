@@ -12,12 +12,12 @@ from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.ensemble import ExtraTreesClassifier
 from sqlalchemy import create_engine
 
-DB_USER = os.getenv("DB_USER", "root")
-DB_PASS = os.getenv("DB_PASS", "o[Dy$:+)E7U.9szM")
-DB_HOST = os.getenv("DB_HOST", "")
-DB_PORT = os.getenv("DB_PORT", "3306")
-DB_NAME = os.getenv("DB_NAME", "web_metadata_db")
-BUCKET_NAME = os.getenv("BUCKET_NAME", "jasont63-nta")
+DB_USER = os.getenv("DB_USER", "false")
+DB_PASS = os.getenv("DB_PASS", "false")
+DB_HOST = os.getenv("DB_HOST", "false")
+DB_PORT = os.getenv("DB_PORT", "false")
+DB_NAME = os.getenv("DB_NAME", "false")
+BUCKET_NAME = os.getenv("BUCKET_NAME", "false")
 
 names=(DB_USER,DB_PASS,DB_HOST,DB_PORT,DB_NAME,BUCKET_NAME)
 

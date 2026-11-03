@@ -76,10 +76,10 @@ done
 gcloud storage ls -l "gs://${BUCKET_NAME}/outputs/"
 
 # Download and print a sample preview of the output CSV files
-echo -e "\n--- Model 1 Output Sample ---"
+echo -e "\n Model 1 Output "
 gcloud storage cat "gs://${BUCKET_NAME}/${FILE1}"
 
-echo -e "\n--- Model 2 Output Sample ---"
+echo -e "\n Model 2 Output"
 gcloud storage cat "gs://${BUCKET_NAME}/${FILE2}"
 
 echo -e "\nExecution complete. VM successfully ran pipeline and uploaded results."
@@ -88,4 +88,5 @@ echo -e "\nCleaning up vm, resuming job, and stopping database"
 gcloud compute instances delete $VM_NAME --zone=$ZONE --quiet
 gcloud scheduler jobs resume hourly-db-check --location=us-central1
 gcloud sql instances patch $INSTANCE_NAME --activation-policy=NEVER --project=$PROJECT_ID
-gcloud storage rm -r gs://jasont63-nta/outputs
+#gcloud storage rm -r gs://jasont63-nta/outputs/model1_report.txt
+#gcloud storage rm -r gs://jasont63-nta/outputs/model2_report.txt
