@@ -55,16 +55,18 @@ def run(argv=None):
             | 'ReadFiles' >> fileio.ReadMatches()
             | 'ExtractTrigrams' >> beam.ParDo(ExtractTrigramsDoFn())
             | 'CountTrigrams' >> beam.combiners.Count.PerElement()
-            |'GetTop5Trigrams' >> beam.combiners.Top.Of(5, key=lambda x: x[1])
-            |'UnnestList' >> beam.FlatMap(lambda x: x)#[filename1,len(list[link)] ... [filename5,len(list[linkd)] not list anymore
-            |'Format' >> beam.MapTuple(format_result)
-            |'Write' >> WriteToText(known_args.output)
+            | 'GetTop5Trigrams' >> beam.combiners.Top.Of(5, key=lambda x: x[1])
+            | 'UnnestList' >> beam.FlatMap(lambda x: x)#[filename1,len(list[link)] ... [filename5,len(list[linkd)] not list anymore
+            | 'Format' >> beam.MapTuple(format_result)
+            | 'Write' >> WriteToText(known_args.output)
             )
         
 if __name__ == '__main__':
     start_time = time.time()
     run()
     end_time = time.time()
+    elapsed_time = end_time - start_time
     print(
-      f'\n[PIPELINE RUNTIME] Completed in: {end_time - start_time:.2f} seconds'
-    )
+      f"\n[RUNTIME] Pipeline completed in: {elapsed_time:.2f} seconds"
+      f" ({elapsed_time / 60:.2f} minutes)"
+    ) 

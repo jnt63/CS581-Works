@@ -48,11 +48,10 @@ def run(argv=None, save_main_session=True):
     known_args, pipeline_args = parser.parse_known_args(argv)
     pipeline_options = PipelineOptions(pipeline_args)
     pipeline_options.view_as(SetupOptions).save_main_session = True
-    # Format the counts into a PCollection of strings.
+
     def format_result(filename, count):
         return '%s: %d' % (filename, count)
     with beam.Pipeline(options=pipeline_options) as p:
-        # Read the text file[pattern] into a PCollection.
         extracted_links = (
             p
             | 'MatchFiles' >> fileio.MatchFiles(known_args.input)
@@ -61,20 +60,20 @@ def run(argv=None, save_main_session=True):
         )   
         top_5_out = (
             extracted_links 
-            |'CountOutLinks' >> beam.Map(lambda x: (x[0],len(x[1]))) #list [(filename,list [links])]-> list [(filename, len(list[link]))]
-            |'GetTop5OutLink' >> beam.combiners.Top.Of(5, key=lambda x: x[1]) #[filename,len(list[link)]*5, top 5
-            |'UnnestOutList' >> beam.FlatMap(lambda x: x)#[filename1,len(list[link)] ... [filename5,len(list[linkd)] not list anymore
-            |'FormatOut' >> beam.MapTuple(format_result)
-            |'WriteOut' >> WriteToText(known_args.output_out)
+            | 'CountOutLinks' >> beam.Map(lambda x: (x[0],len(x[1]))) #list [(filename,list [links])]-> list [(filename, len(list[link]))]
+            | 'GetTop5OutLink' >> beam.combiners.Top.Of(5, key=lambda x: x[1]) #[filename,len(list[link)]*5, top 5
+            | 'UnnestOutList' >> beam.FlatMap(lambda x: x)#[filename1,len(list[link)] ... [filename5,len(list[linkd)] not list anymore
+            | 'FormatOut' >> beam.MapTuple(format_result)
+            | 'WriteOut' >> WriteToText(known_args.output_out)
             )
         top_5_in = (
             extracted_links
-            |'ExtractOnlyLinks' >> beam.FlatMap(lambda x: x[1]) #list [(filename,list [links])]-> list[links]
-            |'CountInLinks' >> beam.combiners.Count.PerElement() #list[(filename,count(filename))]
-            |'GetTop5InLink' >> beam.combiners.Top.Of(5, key=lambda x: x[1]) #top 5 counts
-            |'UnnestInList' >> beam.FlatMap(lambda x: x)
-            |'FormatIn' >> beam.MapTuple(format_result)
-            |'WriteIn' >> WriteToText(known_args.output_in)
+            | 'ExtractOnlyLinks' >> beam.FlatMap(lambda x: x[1]) #list [(filename,list [links])]-> list[links]
+            | 'CountInLinks' >> beam.combiners.Count.PerElement() #list[(filename,count(filename))]
+            | 'GetTop5InLink' >> beam.combiners.Top.Of(5, key=lambda x: x[1]) #top 5 counts
+            | 'UnnestInList' >> beam.FlatMap(lambda x: x)
+            | 'FormatIn' >> beam.MapTuple(format_result)
+            | 'WriteIn' >> WriteToText(known_args.output_in)
         )
 
 if __name__ == '__main__':
@@ -83,6 +82,6 @@ if __name__ == '__main__':
     end_time = time.time()
     elapsed_time = end_time - start_time
     print(
-      f"\n[LOCAL RUNTIME] Pipeline completed in: {elapsed_time:.2f} seconds"
+      f"\n[RUNTIME] Pipeline completed in: {elapsed_time:.2f} seconds"
       f" ({elapsed_time / 60:.2f} minutes)"
     ) 

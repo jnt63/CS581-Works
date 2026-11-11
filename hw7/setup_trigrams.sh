@@ -30,5 +30,5 @@ python ./trigrams.py --runner DataflowRunner \
 	--temp_location gs://${BUCKET}/tmp/ \
 	--worker_machine_type e2-medium
 
-echo "=======Trigram Cloudflow========"
+echo "=======Trigram Dataflow========"
 gcloud storage cat "gs://${BUCKET}/results/cloudflow_trigram_outputs*"

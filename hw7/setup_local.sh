@@ -31,5 +31,7 @@ python ./linkcount.py \
 	--output_out gs://${BUCKET}/results/local_out_outputs \
     --runner=BundleBasedDirectRunner
 
+echo "=======local incoming Links========"
 gcloud storage cat "gs://${BUCKET}/results/local_in_outputs*"
+echo "=======local outgoing Links========"
 gcloud storage cat "gs://${BUCKET}/results/local_out_outputs*"

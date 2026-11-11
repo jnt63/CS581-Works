@@ -35,5 +35,3 @@ python ./trigrams.py \
 	
 echo "=======Trigrams Local========"
 gcloud storage cat "gs://${BUCKET}/results/local_trigram_outputs*"
-echo "=======Trigrams Local========"
-gcloud storage cat "gs://jasont63-nta/results/local_trigram_outputs*"

@@ -28,8 +28,8 @@ python ./linkcount.py --runner DataflowRunner \
 	--temp_location gs://${BUCKET}/tmp/ \
 	--worker_machine_type e2-medium
 
-echo("=======incoming Links========")
+echo "=======DataFlow Incoming Links========"
 gcloud storage cat "gs://${BUCKET}/results/cloudflow_in_outputs*"
-echo("=======outgoing Links========")
+echo "=======DataFlow outgoing Links========"
 gcloud storage cat "gs://${BUCKET}/results/cloudflow_out_outputs*"
 
