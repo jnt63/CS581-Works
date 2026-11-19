@@ -148,4 +148,4 @@ LB_IP=$(gcloud compute forwarding-rules describe $FWD_RULE \
   --region=$REGION \
   --format="value(IPAddress)")
 
-echo "http://${LB_IP}"
+echo "http://${LB_IP}/0.html"
